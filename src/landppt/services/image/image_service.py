@@ -1,5 +1,30 @@
 """
 图片服务主入口
+
+该服务模块提供了完整的图片处理功能:
+1. 图片搜索(从多个来源)
+2. 图片生成(AI生成)
+3. 图片处理(裁剪、缩放等)
+4. 图片缓存管理
+5. 提供商注册和发现
+
+主要类:
+- ImageService: 图片服务主类，单例模式
+
+设计模式:
+- 单例模式: 确保全局只有一个服务实例
+- 工厂模式: 管理多个图片提供商
+- 策略模式: 不同的搜索/生成策略
+
+支持的图片来源:
+- Unsplash
+- Pexels
+- Pixabay
+- OpenAI DALL-E
+- Google Gemini
+- Stable Diffusion
+- Silicon Flow
+- Local Storage
 """
 
 import asyncio
@@ -19,21 +44,49 @@ from .cache.image_cache import ImageCacheManager
 from .matching.image_matcher import ImageMatcher
 from .adapters.ppt_prompt_adapter import PPTPromptAdapter, PPTSlideContext
 
+# 配置模块日志记录器
 logger = logging.getLogger(__name__)
 
 
 class ImageService:
-    """图片服务主类"""
+    """图片服务主类
+    
+    提供统一的图片搜索、生成、处理接口
+    采用单例模式确保全局一致性
+    
+    核心功能:
+    1. 协调多个图片提供商
+    2. 管理图片缓存
+    3. 匹配幻灯片需求
+    4. 处理和转换图片
+    5. 去重搜索优化
+    
+    属性:
+        config: 服务配置
+        processor: 图片处理器
+        cache_manager: 缓存管理器
+        matcher: 图片匹配器
+        ppt_adapter: PPT提示适配器
+        initialized: 初始化状态
+    """
 
     _instance = None
     _class_initialized = False
 
     def __new__(cls, config: Dict[str, Any]):
+        """单例模式实现，确保只有一个服务实例"""
         if cls._instance is None:
             cls._instance = super(ImageService, cls).__new__(cls)
         return cls._instance
 
     def __init__(self, config: Dict[str, Any]):
+        """初始化图片服务
+        
+        避免重复初始化，确保只初始化一次
+        
+        参数:
+            config: 服务配置字典
+        """
         # 避免重复初始化
         if self._class_initialized:
             return
@@ -56,7 +109,14 @@ class ImageService:
         ImageService._class_initialized = True
 
     async def initialize(self):
-        """初始化服务"""
+        """初始化服务
+        
+        执行异步初始化操作:
+        1. 初始化所有注册的提供商
+        2. 建立必要的连接
+        
+        只能在服务创建后调用一次
+        """
         if self.initialized:
             return
         
@@ -72,7 +132,13 @@ class ImageService:
             raise
     
     async def _initialize_providers(self):
-        """初始化图片提供者"""
+        """初始化图片提供者
+        
+        注册和配置所有可用的图片提供商:
+        1. 检查是否已有本地存储提供者
+        2. 注册新的提供者
+        3. 验证提供者配置
+        """
         try:
             # 检查是否已经初始化过本地存储提供者
             existing_storage = provider_registry.get_storage_providers(enabled_only=False)

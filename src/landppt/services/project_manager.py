@@ -1,6 +1,21 @@
 """
 Project and TODO Board Management Service
 Implements the comprehensive project lifecycle management as specified in requires.md
+
+该服务模块实现了PPT项目的全生命周期管理:
+1. 创建新项目和关联的TODO看板
+2. 管理项目状态和进度
+3. 支持工作流阶段的更新和追踪
+
+主要类:
+- ProjectManager: 项目管理核心服务
+
+工作流设计:
+- 需求确认阶段
+- 大纲生成阶段
+- PPT创建阶段
+- 质量检查阶段
+- 最终输出阶段
 """
 
 import uuid
@@ -16,23 +31,50 @@ from ..api.models import (
 )
 
 # Configure logger for this module
+# 配置模块日志记录器，用于记录项目操作和错误
 logger = logging.getLogger(__name__)
 
 
 class ProjectManager:
-    """Manages PPT projects with TODO board workflow"""
+    """项目管理服务类
+    
+    负责PPT项目的创建、更新和状态管理
+    采用TODO看板模式管理项目进度
+    
+    核心功能:
+    1. 创建新项目并初始化TODO看板
+    2. 更新项目状态和进度
+    3. 管理TODO阶段和子任务
+    
+    数据结构:
+    - projects: 存储所有项目的字典 {project_id: PPTProject}
+    - todo_boards: 存储所有TODO看板 {project_id: TodoBoard}
+    """
     
     def __init__(self):
+        """初始化项目管理器"""
+        # 内存存储所有项目实例
         self.projects: Dict[str, PPTProject] = {}
+        # 内存存储所有TODO看板实例
         self.todo_boards: Dict[str, TodoBoard] = {}
     
     async def create_project(self, request: PPTGenerationRequest) -> PPTProject:
-        """Create a new PPT project with TODO board"""
+        """创建新PPT项目
+        
+        创建新项目并自动初始化一个TODO看板
+        
+        参数:
+            request: PPT生成请求，包含主题、场景等信息
+            
+        返回:
+            新创建的PPTProject实例
+        """
         project_id = str(uuid.uuid4())
         
-        # Create TODO board with 5 stages as per requirements
+        # 创建初始TODO看板
         todo_board = self._create_todo_board(project_id, request)
         
+        # 构建项目对象
         project = PPTProject(
             project_id=project_id,
             title=f"{request.topic} - {request.scenario}",
@@ -43,13 +85,24 @@ class ProjectManager:
             todo_board=todo_board
         )
         
+        # 保存到内存存储
         self.projects[project_id] = project
         self.todo_boards[project_id] = todo_board
         
         return project
     
     def _create_todo_board(self, project_id: str, request: PPTGenerationRequest) -> TodoBoard:
-        """Create initial TODO board with placeholder stages (will be updated after requirements confirmation)"""
+        """创建初始TODO看板
+        
+        为新项目创建TODO看板，初始阶段包含需求确认阶段
+        
+        参数:
+            project_id: 项目ID
+            request: PPT生成请求
+            
+        返回:
+            新创建的TodoBoard实例
+        """
         stages = [
             TodoStage(
                 id="requirements_confirmation",

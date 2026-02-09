@@ -1,5 +1,22 @@
 """
 Enhanced PPT Service with real AI integration and project management
+
+该服务模块是PPTService的增强版本，提供了更完整的PPT生成功能:
+1. 集成真实AI服务进行内容生成
+2. 管理数据库项目
+3. 支持全局母版模板
+4. 集成深度研究服务
+5. 支持图片生成和搜索
+6. 文件缓存管理
+7. PDF转换功能
+
+主要类:
+- EnhancedPPTService: 增强PPT服务，继承自PPTService
+
+设计模式:
+- 继承扩展: 继承PPTService并添加新功能
+- 组合模式: 集成多个子服务(研究、图片、模板等)
+- 单例模式: 部分服务使用单例确保全局一致
 """
 
 import json
@@ -36,12 +53,49 @@ from .image.adapters.ppt_prompt_adapter import PPTSlideContext
 from ..utils.thread_pool import run_blocking_io, to_thread
 
 # Configure logger for this module
+# 配置模块日志记录器，用于记录增强PPT服务的运行状态
 logger = logging.getLogger(__name__)
 
+
 class EnhancedPPTService(PPTService):
-    """Enhanced PPT service with real AI integration and project management"""
+    """增强PPT服务类
+    
+    该类是PPTService的增强版本，提供了更强大的PPT生成能力:
+    
+    核心功能:
+    1. AI集成: 集成多种AI提供商，支持实时配置更新
+    2. 项目管理: 通过DatabaseProjectManager管理数据库项目
+    3. 模板管理: 支持全局母版模板
+    4. 研究服务: 集成深度研究功能，自动生成研究报告
+    5. 图片服务: 集成图片生成和搜索功能
+    6. 缓存管理: 支持多模式文件缓存，优化性能
+    7. PDF转换: 支持PDF到PPTX的转换
+    
+    属性说明:
+    - provider_name: AI提供商名称
+    - project_manager: 数据库项目管理器
+    - global_template_service: 全局模板服务
+    - file_cache_manager: 文件缓存管理器
+    - research_service: 研究服务实例
+    - image_service: 图片服务实例
+    - _free_template_generation_locks: 防止重复模板生成的锁
+    """
 
     def __init__(self, provider_name: Optional[str] = None):
+        """初始化增强PPT服务
+        
+        执行以下初始化步骤:
+        1. 调用父类PPTService的初始化
+        2. 初始化数据库项目管理器
+        3. 初始化全局母版模板服务
+        4. 配置文件缓存系统
+        5. 初始化研究服务
+        6. 初始化图片服务
+        7. 初始化模板生成锁
+        
+        参数:
+            provider_name: 可选的AI提供商名称
+        """
         super().__init__()
         self.provider_name = provider_name
         self.project_manager = DatabaseProjectManager()
@@ -61,6 +115,7 @@ class EnhancedPPTService(PPTService):
             project_root = Path(__file__).parent.parent.parent.parent
 
             # 为不同模式创建分离的缓存目录
+            # 这样可以避免不同功能之间的缓存冲突
             base_cache_dir = project_root / "temp"
 
             # 创建分模式的缓存目录结构
@@ -97,10 +152,17 @@ class EnhancedPPTService(PPTService):
         self._initialize_image_service()
 
         # Per-project lock to avoid duplicate free-template generation under parallel slide generation
+        # 每个项目独立的锁，防止并行生成幻灯片时重复生成模板
         self._free_template_generation_locks: Dict[str, asyncio.Lock] = {}
 
     def _get_auto_layout_debug_dir(self) -> Path:
-        """Directory to persist auto layout repair debug artifacts (HTML & screenshots)."""
+        """获取自动布局调试目录
+        
+        用于保存自动布局修复的调试产物(HTML和截图)
+        
+        返回:
+            调试目录的Path对象
+        """
         project_root = Path(__file__).resolve().parent.parent.parent.parent
         debug_dir = project_root / "temp" / "auto_layout_debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
@@ -108,18 +170,31 @@ class EnhancedPPTService(PPTService):
 
     @property
     def ai_provider(self):
-        """Dynamically get AI provider to ensure latest config"""
+        """动态获取AI服务提供商
+        
+        使用@property装饰器实现动态属性，确保每次访问时都能获取最新的配置
+        
+        返回:
+            AI提供商实例
+        """
         provider_name = self.provider_name or ai_config.default_ai_provider
         return get_ai_provider(provider_name)
 
     def _initialize_research_services(self):
-        """Initialize enhanced research service"""
+        """初始化增强研究服务
+        
+        设置深度研究服务，包括:
+        1. EnhancedResearchService: 深度研究执行服务
+        2. EnhancedReportGenerator: 研究报告生成器
+        
+        如果初始化失败，会记录警告并设置为None
+        """
         try:
             # Initialize enhanced research service
             self.enhanced_research_service = EnhancedResearchService()
             self.enhanced_report_generator = EnhancedReportGenerator()
 
-            # Check availability
+            # Check availability - 检查服务可用性
             enhanced_available = self.enhanced_research_service.is_available()
 
             if enhanced_available:
@@ -137,7 +212,16 @@ class EnhancedPPTService(PPTService):
 
 
     def _initialize_image_service(self):
-        """Initialize image service"""
+        """初始化图片服务
+        
+        设置图片服务，包括:
+        1. 获取图片服务配置
+        2. 配置缓存目录
+        3. 验证配置有效性
+        4. 初始化ImageService实例
+        
+        如果初始化失败，会记录警告并设置为None
+        """
         try:
             from .image.config.image_config import get_image_config
 
@@ -177,7 +261,10 @@ class EnhancedPPTService(PPTService):
             self.image_service = None
 
     async def _async_initialize_image_service(self):
-        """异步初始化图片服务"""
+        """异步初始化图片服务
+        
+        用于在异步环境中安全地初始化图片服务
+        """
         try:
             if self.image_service and not self.image_service.initialized:
                 await self.image_service.initialize()
@@ -186,10 +273,14 @@ class EnhancedPPTService(PPTService):
             logger.error(f"Failed to async initialize image service: {e}")
 
     def reload_research_config(self):
-        """Reload enhanced research service configuration"""
+        """重新加载研究服务配置
+        
+        在运行时重新初始化研究服务，以应用新的配置
+        """
         if hasattr(self, 'enhanced_research_service') and self.enhanced_research_service:
             try:
                 # Enhanced research service doesn't have reload_config method, so reinitialize
+                # 重新初始化研究服务
                 self._initialize_research_services()
                 logger.info("Enhanced research service configuration reloaded in EnhancedPPTService")
             except Exception as e:

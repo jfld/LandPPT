@@ -1,5 +1,14 @@
 """
 Enhanced AI Service for handling OpenAI-compatible requests and PPT generation
+
+该服务模块提供了以下核心功能:
+1. 处理与PPT生成相关的AI请求
+2. 支持多种场景模板(如旅游、教育、商业等)的PPT生成
+3. 动态获取AI服务提供商配置
+4. 智能识别PPT相关请求
+
+主要类:
+- AIService: 核心AI服务类，处理PPT生成相关的所有请求
 """
 
 import re
@@ -10,19 +19,46 @@ from ..api.models import ChatCompletionRequest, CompletionRequest, PPTGeneration
 from ..ai import get_ai_provider, AIMessage, MessageRole
 from ..core.config import ai_config
 
+# 配置日志记录器，用于记录AI服务运行状态和错误信息
 logger = logging.getLogger(__name__)
 
+
 class AIService:
-    """Enhanced AI service for processing requests and generating responses"""
+    """Enhanced AI服务类，处理PPT生成相关的所有请求
+    
+    该类提供以下核心功能:
+    - 动态获取和管理AI服务提供商
+    - 识别PPT相关请求并路由到专门的处理器
+    - 支持多种场景模板配置
+    - 生成PPT专用的系统提示词
+    
+    属性说明:
+    - provider_name: 当前配置的AI提供商名称
+    - ppt_keywords: 用于识别PPT请求的关键词列表
+    - scenario_templates: 不同场景的PPT风格和结构模板
+    """
 
     def __init__(self, provider_name: Optional[str] = None):
+        """
+        初始化AI服务
+        
+        参数:
+            provider_name: 可选的AI提供商名称，如果不提供则使用默认配置
+        """
         self.provider_name = provider_name
 
+        # 定义PPT相关关键词，用于识别用户是否在请求PPT生成
+        # 支持中英文关键词，包括: ppt, presentation, slides, 幻灯片, 演示等
         self.ppt_keywords = [
             "ppt", "presentation", "slides", "幻灯片", "演示", "汇报",
             "展示", "发表", "讲解", "课件", "slide", "powerpoint"
         ]
 
+        # 配置不同场景的PPT生成模板
+        # 每个场景包含:
+        #   - style: 视觉风格 (professional, vibrant, playful, analytical等)
+        #   - tone: 语气/调性 (formal, engaging, friendly, objective等)
+        #   - structure: PPT结构，包含各个章节的顺序
         self.scenario_templates = {
             "general": {
                 "style": "professional",
@@ -63,17 +99,47 @@ class AIService:
 
     @property
     def ai_provider(self):
-        """Dynamically get AI provider to ensure latest config"""
+        """动态获取AI服务提供商
+        
+        使用@property装饰器实现动态属性，确保每次访问时都能获取最新的配置
+        这对于支持运行时配置更改非常重要
+        
+        返回:
+            AI提供商实例，用于执行实际的AI请求
+        """
         provider_name = self.provider_name or ai_config.default_ai_provider
         return get_ai_provider(provider_name)
 
     def is_ppt_request(self, text: str) -> bool:
-        """Check if the request is related to PPT generation"""
+        """检查请求是否与PPT生成相关
+        
+        该方法通过检查文本中是否包含PPT相关关键词来判断是否为PPT请求
+        这是路由决策的第一步
+        
+        参数:
+            text: 用户输入的原始文本
+            
+        返回:
+            True表示是PPT相关请求，False表示不是
+        """
         text_lower = text.lower()
         return any(keyword in text_lower for keyword in self.ppt_keywords)
     
     async def handle_ppt_chat_request(self, request: ChatCompletionRequest) -> str:
         """Handle PPT-related chat completion request using real AI"""
+        """处理PPT相关的聊天补全请求
+        
+        当用户发送与PPT相关的请求时，此方法负责:
+        1. 将请求消息转换为AI消息格式
+        2. 添加PPT专用的系统提示词
+        3. 调用AI提供商生成响应
+        
+        参数:
+            request: 包含用户消息的聊天补全请求
+            
+        返回:
+            AI生成的PPT相关内容响应
+        """
         try:
             # Convert to AI messages
             ai_messages = []

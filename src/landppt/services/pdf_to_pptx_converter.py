@@ -1,6 +1,20 @@
 """
 PDF to PPTX Converter Service for LandPPT
 Uses Apryse SDK to convert PDF files to PowerPoint presentations
+
+该服务模块提供PDF到PPTX(PowerPoint)格式的转换功能:
+1. 使用Apryse SDK进行PDF处理
+2. 支持多平台自动SDK下载
+3. 自动检测和配置平台特定设置
+
+主要类:
+- SDKDownloadManager: SDK下载和管理器
+- PDFToPPTXConverter: PDF转换器
+
+设计特点:
+- 跨平台支持(Windows、Linux、macOS)
+- 自动SDK下载和配置
+- 临时文件管理
 """
 
 import os
@@ -17,15 +31,34 @@ from typing import Optional, Tuple
 from dotenv import load_dotenv
 
 # Load environment variables
+# 加载环境变量
 load_dotenv()
 
+# 配置模块日志记录器
 logger = logging.getLogger(__name__)
 
 
 class SDKDownloadManager:
-    """Manages automatic download and extraction of Apryse SDK files"""
+    """SDK下载管理器
+    
+    负责Apryse SDK的自动下载和配置:
+    1. 检测当前操作系统平台
+    2. 下载对应的SDK包
+    3. 解压并配置SDK文件
+    
+    支持的平台:
+    - Windows (.zip)
+    - Linux (.tar.gz)
+    - macOS (.zip)
+    
+    属性:
+        lib_dir: SDK存放目录
+        platform_name: 平台名称
+        platform_dir: 平台特定的SDK目录
+    """
 
     # SDK download URLs for different platforms
+    # 不同平台的SDK下载URL
     SDK_URLS = {
         'windows': 'https://www.pdftron.com/downloads/StructuredOutputWindows.zip',
         'linux': 'https://pdftron.s3.amazonaws.com/downloads/StructuredOutputLinux.tar.gz',
@@ -33,12 +66,23 @@ class SDKDownloadManager:
     }
 
     def __init__(self, lib_dir: Path):
+        """初始化SDK下载管理器
+        
+        参数:
+            lib_dir: SDK存放的根目录
+        """
         self.lib_dir = lib_dir
         self.platform_name = self._get_platform_name()
         self.platform_dir = lib_dir / self._get_platform_dir_name()
 
     def _get_platform_name(self) -> str:
-        """Get normalized platform name"""
+        """获取标准化后的平台名称
+        
+        将操作系统名称转换为小写标准化格式
+        
+        返回:
+            标准化后的平台名称: 'windows', 'linux', 或 'macos'
+        """
         system = platform.system().lower()
         if system == 'windows':
             return 'windows'
@@ -51,7 +95,13 @@ class SDKDownloadManager:
             return 'linux'
 
     def _get_platform_dir_name(self) -> str:
-        """Get platform directory name in lib folder"""
+        """获取平台目录名称
+        
+        返回SDK存放目录中对应平台的子目录名称
+        
+        返回:
+            目录名称: 'Windows', 'Linux', 或 'MacOS'
+        """
         if self.platform_name == 'windows':
             return 'Windows'
         elif self.platform_name == 'linux':
@@ -62,7 +112,13 @@ class SDKDownloadManager:
             return 'Linux'
 
     def is_sdk_available(self) -> bool:
-        """Check if SDK files are available for current platform"""
+        """检查当前平台的SDK是否可用
+        
+        检测必要的SDK文件是否存在
+        
+        返回:
+            True表示SDK可用，False表示不可用
+        """
         if not self.platform_dir.exists():
             return False
 

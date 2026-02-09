@@ -1,5 +1,20 @@
 """
 Research Report Generator - Generate and save Markdown research reports
+
+该服务模块提供了研究报告的生成和保存功能:
+1. 将ResearchReport对象转换为Markdown格式
+2. 保存研究报告到本地文件系统
+3. 生成文件名和安全的主题名
+4. 构建完整的报告内容结构
+
+主要类:
+- ResearchReportGenerator: 研究报告生成器
+
+设计特点:
+- Markdown格式输出
+- 安全的文件名处理
+- 结构化的报告内容
+- 时间戳命名避免冲突
 """
 
 import os
@@ -11,33 +26,71 @@ import re
 
 from .deep_research_service import ResearchReport, ResearchStep
 
+# 配置模块日志记录器
 logger = logging.getLogger(__name__)
 
+
 class ResearchReportGenerator:
-    """Generate and manage research reports in Markdown format"""
+    """研究和报告生成器类
+    
+    负责将ResearchReport对象转换为Markdown格式并保存到文件
+    
+    核心功能:
+    1. 生成Markdown格式的研究报告
+    2. 保存报告到本地文件系统
+    3. 安全的主题名处理(用于文件名)
+    4. 构建结构化的报告内容
+    
+    属性:
+        reports_dir: 报告保存目录
+    """
     
     def __init__(self, reports_dir: str = "research_reports"):
+        """初始化研究报告生成器
+        
+        参数:
+            reports_dir: 报告保存目录，默认为"research_reports"
+        """
         self.reports_dir = Path(reports_dir)
         self.reports_dir.mkdir(exist_ok=True)
         logger.info(f"Research reports directory: {self.reports_dir.absolute()}")
     
     def generate_markdown_report(self, report: ResearchReport) -> str:
-        """Generate Markdown formatted research report"""
+        """生成Markdown格式的研究报告
         
-        # Sanitize topic for filename
+        将ResearchReport对象转换为Markdown字符串，不保存到文件
+        
+        参数:
+            report: ResearchReport对象
+            
+        返回:
+            Markdown格式的报告字符串
+        """
+        
+        # Sanitize topic for filename - 清理主题名用于文件名
         safe_topic = self._sanitize_filename(report.topic)
         timestamp = report.created_at.strftime("%Y%m%d_%H%M%S")
         
-        # Generate report content
+        # Generate report content - 生成报告内容
         markdown_content = self._build_markdown_content(report)
         
         return markdown_content
     
     def save_report_to_file(self, report: ResearchReport, custom_filename: Optional[str] = None) -> str:
-        """Save research report to local file system"""
+        """保存研究报告到本地文件系统
+        
+        将研究报告保存为Markdown文件
+        
+        参数:
+            report: ResearchReport对象
+            custom_filename: 可选的自定义文件名
+            
+        返回:
+            保存的文件路径
+        """
         
         try:
-            # Generate filename
+            # Generate filename - 生成文件名
             if custom_filename:
                 filename = custom_filename
                 if not filename.endswith('.md'):
@@ -47,13 +100,13 @@ class ResearchReportGenerator:
                 timestamp = report.created_at.strftime("%Y%m%d_%H%M%S")
                 filename = f"research_{safe_topic}_{timestamp}.md"
             
-            # Generate full path
+            # Generate full path - 生成完整路径
             file_path = self.reports_dir / filename
             
-            # Generate markdown content
+            # Generate markdown content - 生成Markdown内容
             markdown_content = self._build_markdown_content(report)
             
-            # Write to file
+            # Write to file - 写入文件
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_content)
             
@@ -65,9 +118,16 @@ class ResearchReportGenerator:
             raise
     
     def _build_markdown_content(self, report: ResearchReport) -> str:
-        """Build complete Markdown content for the report"""
+        """构建完整的Markdown报告内容
         
-        content = []
+        将研究报告组装成结构化的Markdown文档
+        
+        参数:
+            report: ResearchReport对象
+            
+        返回:
+            完整的Markdown内容字符串
+        """
         
         # Title and metadata
         content.append(f"# {report.topic} - 深度研究报告")

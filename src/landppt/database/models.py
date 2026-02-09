@@ -1,5 +1,22 @@
 """
 SQLAlchemy database models for LandPPT
+
+该模块定义了LandPPT项目的所有数据库模型:
+
+核心模型:
+- User: 用户模型
+- UserSession: 用户会话模型
+- Project: 项目模型
+- TodoBoard: TODO看板模型
+- ProjectVersion: 项目版本模型
+- SlideData: 幻灯片数据模型
+- SpeechScript: 演讲稿模型
+
+设计特点:
+- 使用SQLAlchemy ORM
+- 支持JSON字段存储复杂数据
+- 关系映射支持级联操作
+- 时间戳自动管理
 """
 
 import time
@@ -10,11 +27,25 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
+# 创建声明性基类
 Base = declarative_base()
 
 
 class User(Base):
-    """User model for authentication"""
+    """用户模型
+    
+    存储用户账户信息，支持认证和授权
+    
+    属性:
+        id: 主键
+        username: 用户名，唯一索引
+        password_hash: 密码哈希值
+        email: 邮箱地址
+        is_active: 是否激活
+        is_admin: 是否管理员
+        created_at: 创建时间戳
+        last_login: 最后登录时间戳
+    """
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -27,15 +58,15 @@ class User(Base):
     last_login: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     def set_password(self, password: str):
-        """Set password hash"""
+        """设置密码哈希"""
         self.password_hash = hashlib.sha256(password.encode()).hexdigest()
 
     def check_password(self, password: str) -> bool:
-        """Check if password is correct"""
+        """验证密码是否正确"""
         return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
+        """转换为字典"""
         return {
             "id": self.id,
             "username": self.username,
@@ -48,7 +79,18 @@ class User(Base):
 
 
 class UserSession(Base):
-    """User session model"""
+    """用户会话模型
+    
+    管理用户登录会话，支持过期时间控制
+    
+    属性:
+        id: 主键
+        session_id: 会话ID
+        user_id: 关联的用户ID
+        created_at: 创建时间
+        expires_at: 过期时间
+        is_active: 是否活跃
+    """
     __tablename__ = "user_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -58,12 +100,12 @@ class UserSession(Base):
     expires_at: Mapped[float] = mapped_column(Float, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Relationship
+    # Relationship - 关联用户
     user: Mapped["User"] = relationship("User")
 
     def is_expired(self) -> bool:
-        """Check if session is expired"""
-        # If expires_at is set to year 2099 or later, consider it as never expires
+        """检查会话是否过期"""
+        # 如果过期时间设置为2099年或更晚，视为永不过期
         year_2099_timestamp = time.mktime(time.strptime("2099-01-01 00:00:00", "%Y-%m-%d %H:%M:%S"))
         if self.expires_at >= year_2099_timestamp:
             return False
@@ -71,7 +113,33 @@ class UserSession(Base):
 
 
 class Project(Base):
-    """Project model for storing PPT projects"""
+    """项目模型
+    
+    存储PPT项目的主要数据，包括:
+    - 项目基本信息(标题、主题、场景)
+    - 内容数据(大纲、HTML幻灯片)
+    - 状态管理
+    - 分享功能
+    
+    属性:
+        id: 主键
+        project_id: UUID格式的项目ID
+        title: 项目标题
+        scenario: PPT场景类型
+        topic: 主题
+        requirements: 需求描述
+        status: 项目状态
+        outline: 大纲数据(JSON)
+        slides_html: 幻灯片HTML内容
+        slides_data: 幻灯片数据列表(JSON)
+        confirmed_requirements: 确认的需求
+        project_metadata: 项目元数据(模板ID等)
+        version: 版本号
+        share_token: 分享令牌
+        share_enabled: 是否启用分享
+        created_at: 创建时间
+        updated_at: 更新时间
+    """
     __tablename__ = "projects"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -92,7 +160,7 @@ class Project(Base):
     created_at: Mapped[float] = mapped_column(Float, default=time.time)
     updated_at: Mapped[float] = mapped_column(Float, default=time.time, onupdate=time.time)
     
-    # Relationships
+    # Relationships - 关联关系
     todo_board: Mapped[Optional["TodoBoard"]] = relationship("TodoBoard", back_populates="project", uselist=False)
     versions: Mapped[List["ProjectVersion"]] = relationship("ProjectVersion", back_populates="project")
     slides: Mapped[List["SlideData"]] = relationship("SlideData", back_populates="project")

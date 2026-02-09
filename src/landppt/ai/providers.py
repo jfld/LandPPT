@@ -14,10 +14,60 @@ from ..core.config import ai_config
 logger = logging.getLogger(__name__)
 
 
+"""
+AI Provider Implementations
+
+该模块实现了多种AI服务提供商的接口:
+1. OpenAI: OpenAI API (GPT-4, GPT-3.5等)
+2. Anthropic: Claude AI
+3. Google: Gemini API
+4. Ollama: 本地模型支持
+
+设计模式:
+- 策略模式: 不同的AI提供商实现统一的接口
+- 配置驱动: 通过配置字典初始化不同的提供商
+- 多模态支持: 支持文本和图片内容
+
+功能特点:
+- 统一的AIProvider基类
+- 支持多轮对话
+- 支持函数调用
+- Think标签过滤
+"""
+
+import asyncio
+import json
+import logging
+import re
+from typing import List, Dict, Any, Optional, AsyncGenerator, Union, Tuple
+
+from .base import AIProvider, AIMessage, AIResponse, MessageRole, TextContent, ImageContent, MessageContentType
+from ..core.config import ai_config
+
+# 配置模块日志记录器
+logger = logging.getLogger(__name__)
+
+
 class OpenAIProvider(AIProvider):
-    """OpenAI API provider"""
+    """OpenAI API提供商实现
+    
+    提供OpenAI API的集成支持，包括:
+    - GPT-4模型
+    - GPT-3.5 Turbo模型
+    - 多模态输入支持
+    - Think标签过滤
+    
+    属性:
+        client: OpenAI异步客户端
+        model: 使用的模型名称
+    """
 
     def __init__(self, config: Dict[str, Any]):
+        """初始化OpenAI提供商
+        
+        参数:
+            config: 配置字典，包含api_key和base_url
+        """
         super().__init__(config)
         try:
             import openai
@@ -30,11 +80,11 @@ class OpenAIProvider(AIProvider):
             self.client = None
 
     def _convert_message_to_openai(self, message: AIMessage) -> Dict[str, Any]:
-        """Convert AIMessage to OpenAI format, supporting multimodal content"""
+        """将AIMessage转换为OpenAI格式，支持多模态内容"""
         openai_message = {"role": message.role.value}
 
         if isinstance(message.content, str):
-            # Simple text message
+            # Simple text message - 简单文本消息
             openai_message["content"] = message.content
         elif isinstance(message.content, list):
             # Multimodal message

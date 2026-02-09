@@ -1,5 +1,19 @@
 """
 PPT Service for generating presentations
+
+该服务模块提供了PPT(演示文稿)生成的核心功能:
+1. 根据用户请求生成PPT大纲
+2. 将大纲转换为HTML格式的幻灯片
+3. 支持多种场景样式配置(如商务、教育、旅游等)
+4. 提供幻灯片的CSS样式生成
+
+主要类:
+- PPTService: PPT生成的核心服务类
+
+设计说明:
+- 使用异步方法处理耗时操作
+- 支持多语言(中文/英文)
+- 场景化配置确保PPT风格与内容匹配
 """
 
 import json
@@ -11,9 +25,35 @@ import PyPDF2
 import io
 
 class PPTService:
-    """Service for PPT generation and processing"""
+    """PPT生成服务类
+    
+    该类是PPT生成流程的核心入口，提供以下功能:
+    1. 接收PPT生成请求
+    2. 生成PPT大纲结构
+    3. 将大纲渲染为HTML幻灯片
+    4. 配置不同场景的视觉样式
+    
+    属性说明:
+    - scenario_configs: 场景配置字典，定义每种场景的颜色方案、字体和CSS类
+    
+    场景支持:
+    - general: 通用/默认风格
+    - tourism: 旅游/旅行风格
+    - education: 教育/教学风格
+    - analysis: 分析/研究报告风格
+    - history: 历史/文化风格
+    - technology: 科技/技术风格
+    - business: 商务/企业风格
+    """
     
     def __init__(self):
+        """初始化PPT服务
+        
+        配置不同场景的视觉样式参数:
+        - color_scheme: 主题色(十六进制颜色码)
+        - font_family: 字体家族
+        - style_class: 关联的CSS样式类名
+        """
         self.scenario_configs = {
             "general": {
                 "color_scheme": "#2E86AB",
@@ -53,12 +93,29 @@ class PPTService:
         }
     
     async def generate_ppt(self, task_id: str, request: PPTGenerationRequest) -> Dict[str, Any]:
-        """Generate complete PPT based on request"""
+        """根据请求生成完整的PPT
+        
+        这是PPT生成的主入口方法，执行以下步骤:
+        1. 生成PPT大纲结构
+        2. 根据大纲生成HTML幻灯片
+        
+        参数:
+            task_id: 任务ID，用于追踪和标识生成任务
+            request: PPT生成请求，包含主题、场景、语言等信息
+            
+        返回:
+            包含生成结果的字典:
+            - success: 是否成功
+            - task_id: 任务ID
+            - outline: 生成的大纲
+            - slides_html: 生成的HTML幻灯片
+            - error: 错误信息(如果失败)
+        """
         try:
-            # Step 1: Generate outline
+            # Step 1: Generate outline - 根据请求生成PPT结构大纲
             outline = await self.generate_outline(request)
             
-            # Step 2: Generate slides HTML
+            # Step 2: Generate slides HTML - 将大纲转换为HTML格式
             slides_html = await self.generate_slides_from_outline(outline, request.scenario)
             
             return {
@@ -76,17 +133,31 @@ class PPTService:
             }
     
     async def generate_outline(self, request: PPTGenerationRequest) -> PPTOutline:
-        """Generate PPT outline based on request"""
+        """生成PPT大纲
+        
+        根据用户请求生成PPT的逻辑结构，包括:
+        1. 标题页
+        2. 目录页
+        3. 内容页(根据场景定制)
+        4. 结束页
+        
+        参数:
+            request: PPT生成请求
+            
+        返回:
+            PPTOutline对象，包含完整的幻灯片结构
+        """
         topic = request.topic
         scenario = request.scenario
         language = request.language
         ppt_style = request.ppt_style
         custom_style_prompt = request.custom_style_prompt
         description = request.description
-        # Generate slides based on scenario
+        
+        # Generate slides based on scenario - 根据场景生成幻灯片
         slides = []
         
-        # Title slide
+        # Title slide - 标题页，第一页
         slides.append({
             "id": 1,
             "type": "title",
@@ -95,7 +166,7 @@ class PPTService:
             "content": ""
         })
         
-        # Agenda slide
+        # Agenda slide - 目录页，第二页
         slides.append({
             "id": 2,
             "type": "agenda",
@@ -104,11 +175,11 @@ class PPTService:
             "content": self._generate_agenda_content(scenario, language,)
         })
         
-        # Content slides based on scenario
+        # Content slides based on scenario - 根据场景生成内容页
         content_slides = self._generate_content_slides(topic, scenario, language)
         slides.extend(content_slides)
         
-        # Thank you slide
+        # Thank you slide - 结束页
         slides.append({
             "id": len(slides) + 1,
             "type": "thankyou",
@@ -129,8 +200,20 @@ class PPTService:
         )
     
     async def generate_slides_from_outline(self, outline: PPTOutline, scenario: str) -> str:
-        """Generate HTML slides from outline"""
-        config = self.scenario_configs.get(scenario, self.scenario_configs["general"])
+        """根据大纲生成HTML幻灯片
+        
+        将PPTOutline对象转换为完整的HTML文档，包含:
+        1. CSS样式定义
+        2. 每个幻灯片的HTML结构
+        3. 导航控制JavaScript
+        
+        参数:
+            outline: PPT大纲对象
+            scenario: 场景类型，用于选择对应的样式配置
+            
+        返回:
+            完整的HTML幻灯片文档字符串
+        """
         
         # Generate CSS styles
         css_styles = self._generate_css_styles(config)

@@ -1,5 +1,24 @@
 """
 DEEP Research Service - Advanced research functionality using Tavily API
+
+该服务模块实现了深度研究功能，使用Tavily API进行智能搜索和信息收集:
+
+研究方法论 DEEP:
+- D - Define research objectives (定义研究目标)
+- E - Explore multiple perspectives (探索多个角度)
+- E - Evaluate sources and evidence (评估来源和证据)
+- P - Present comprehensive findings (呈现全面发现)
+
+主要类:
+- DEEPResearchService: 深度研究服务核心类
+- ResearchStep: 表示单个研究步骤的数据类
+- ResearchReport: 表示完整研究报告的数据类
+
+设计特点:
+- 使用Tavily API进行网络搜索
+- 支持多步骤迭代研究
+- 自动生成执行摘要
+- 记录研究来源
 """
 
 import asyncio
@@ -15,11 +34,29 @@ from tavily import TavilyClient
 from ..core.config import ai_config
 from ..ai import get_ai_provider
 
+# 配置模块日志记录器
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ResearchStep:
-    """Represents a single research step"""
+    """表示单个研究步骤的数据类
+    
+    用于记录研究过程中的每个步骤:
+    - 查询内容
+    - 步骤描述
+    - 搜索结果
+    - 分析结论
+    - 完成状态
+    
+    属性:
+        step_number: 步骤编号
+        query: 搜索查询词
+        description: 步骤描述
+        results: 搜索结果列表
+        analysis: 分析总结
+        completed: 是否完成
+    """
     step_number: int
     query: str
     description: str
@@ -27,9 +64,24 @@ class ResearchStep:
     analysis: str
     completed: bool = False
 
+
 @dataclass
 class ResearchReport:
-    """Complete research report"""
+    """完整研究报告的数据类
+    
+    包含整个研究过程的所有信息:
+    
+    属性:
+        topic: 研究主题
+        language: 报告语言
+        steps: 研究步骤列表
+        executive_summary: 执行摘要
+        key_findings: 主要发现列表
+        recommendations: 建议列表
+        sources: 来源列表
+        created_at: 创建时间
+        total_duration: 总耗时
+    """
     topic: str
     language: str
     steps: List[ResearchStep]
@@ -40,21 +92,34 @@ class ResearchReport:
     created_at: datetime
     total_duration: float
 
+
 class DEEPResearchService:
-    """
-    DEEP Research Service implementing comprehensive research methodology:
-    D - Define research objectives
-    E - Explore multiple perspectives  
-    E - Evaluate sources and evidence
-    P - Present comprehensive findings
+    """深度研究服务类
+    
+    实现DEEP研究方法论:
+    - D(Define): 定义研究目标和查询
+    - E(Explore): 通过Tavily API搜索信息
+    - E(Evaluate): 分析和评估搜索结果
+    - P(Present): 生成综合研究报告
+    
+    核心功能:
+    1. 初始化和管理Tavily客户端
+    2. 执行多步骤研究
+    3. 生成结构化研究报告
+    4. 支持配置热重载
     """
     
     def __init__(self):
+        """初始化深度研究服务"""
         self.tavily_client = None
         self._initialize_tavily_client()
 
     def _initialize_tavily_client(self):
-        """Initialize Tavily client"""
+        """初始化Tavily客户端
+        
+        从配置中获取API密钥并创建Tavily客户端实例
+        如果配置缺失，记录警告信息
+        """
         try:
             current_api_key = ai_config.tavily_api_key
             logger.info(f"Initializing Tavily client with API key: {'***' + current_api_key[-4:] if current_api_key and len(current_api_key) > 4 else 'None'}")
@@ -70,7 +135,10 @@ class DEEPResearchService:
             self.tavily_client = None
 
     def reload_config(self):
-        """Reload configuration and reinitialize Tavily client"""
+        """重新加载配置并重新初始化Tavily客户端
+        
+        用于运行时配置更新，无需重启服务
+        """
         logger.info("Reloading research service configuration...")
         # Clear existing client first
         self.tavily_client = None

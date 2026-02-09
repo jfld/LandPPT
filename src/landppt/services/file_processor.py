@@ -1,6 +1,20 @@
 """
 File Processing Service for LandPPT
 Handles document upload and content extraction as specified in requires.md
+
+该服务模块提供了文件处理的核心功能:
+1. 支持多种文件格式处理(DOCX、PDF、TXT、MD、图片等)
+2. 自动识别文档场景类型(如旅游、教育、商业等)
+3. 提取文档内容用于PPT生成
+4. 支持OCR图片文字识别
+
+主要类:
+- FileProcessor: 文件处理服务类
+
+设计特点:
+- 异步处理以提高性能
+- 多种文件格式支持
+- 智能场景识别
 """
 
 import os
@@ -11,6 +25,7 @@ from pathlib import Path
 import tempfile
 
 # Document processing libraries
+# 文档处理库，根据可用性导入
 try:
     import docx
     from docx import Document
@@ -33,13 +48,39 @@ except ImportError:
 
 from ..api.models import FileUploadResponse
 
+# 配置模块日志记录器
 logger = logging.getLogger(__name__)
 
 
 class FileProcessor:
-    """Processes uploaded files and extracts content for PPT generation"""
+    """文件处理服务类
+    
+    负责处理用户上传的文件，提取内容用于PPT生成
+    
+    核心功能:
+    1. 文件格式识别和处理
+    2. 内容提取
+    3. 场景自动识别
+    4. 文件元数据提取
+    
+    支持的文件格式:
+    - .docx: Word文档
+    - .pdf: PDF文档
+    - .txt: 纯文本
+    - .md: Markdown
+    - .jpg/.jpeg/.png: 图片(支持OCR)
+    
+    属性说明:
+    - supported_formats: 支持的文件格式和处理函数映射
+    - scenario_keywords: 场景识别的关键词词典
+    """
     
     def __init__(self):
+        """初始化文件处理器
+        
+        构建文件格式和处理函数的映射
+        设置场景识别的关键词
+        """
         self.supported_formats = {
             '.docx': self._process_docx,
             '.pdf': self._process_pdf,
@@ -50,7 +91,8 @@ class FileProcessor:
             '.png': self._process_image,
         }
         
-        # Keywords for scenario detection
+        # Keywords for scenario detection - 场景识别关键词
+        # 用于根据文件内容自动识别PPT场景类型
         self.scenario_keywords = {
             'tourism': ['旅游', '景点', '行程', '旅行', '观光', '度假', '酒店', '机票', '导游'],
             'education': ['教育', '学习', '课程', '培训', '知识', '科普', '儿童', '学生', '教学'],
@@ -68,15 +110,31 @@ class FileProcessor:
         *,
         file_processing_mode: Optional[str] = None,
     ) -> FileUploadResponse:
-        """Process uploaded file and extract content"""
+        """处理上传的文件并提取内容
+        
+        这是文件处理的主入口方法，执行以下步骤:
+        1. 验证文件格式
+        2. 根据文件类型调用对应的处理函数
+        3. 提取文件元数据
+        4. 识别场景类型
+        
+        参数:
+            file_path: 文件在服务器上的路径
+            filename: 文件名
+            file_processing_mode: 可选的处理模式
+            
+        返回:
+            FileUploadResponse: 包含提取内容和元数据的响应对象
+        """
         try:
             file_ext = Path(filename).suffix.lower()
             file_size = os.path.getsize(file_path)
             
+            # 检查文件格式是否支持
             if file_ext not in self.supported_formats:
                 raise ValueError(f"Unsupported file format: {file_ext}")
             
-            # Process file based on type
+            # Process file based on type - 根据文件类型处理
             if file_ext == ".pdf":
                 content = await self._process_pdf(file_path, file_processing_mode=file_processing_mode)
             else:

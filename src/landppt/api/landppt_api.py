@@ -1,5 +1,25 @@
 """
 LandPPT specific API endpoints
+
+该API模块提供了LandPPT的核心功能接口:
+1. 健康检查
+2. AI提供商管理
+3. PPT场景配置
+4. 文件处理
+5. 研究服务集成
+6. Think标签过滤
+
+主要功能:
+- /health: 服务健康检查
+- /ai/providers: AI提供商信息
+- /ai/providers/{name}/test: 测试AI提供商
+- /scenarios: 获取PPT场景列表
+
+设计特点:
+- FastAPI路由组织
+- 懒加载服务实例
+- Think标签内容过滤
+- 支持前端配置覆盖
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
@@ -12,8 +32,7 @@ import re
 from .models import (
     PPTScenario, PPTGenerationRequest, PPTGenerationResponse,
     PPTOutline, PPTProject, TodoBoard, ProjectListResponse,
-    FileUploadResponse, SlideContent, FileOutlineGenerationRequest,
-    FileOutlineGenerationResponse, TemplateSelectionRequest, TemplateSelectionResponse
+    FileUploadResponse, SlideContent, FileOutlineGenerationRequest, FileOutlineGenerationResponse, TemplateSelectionRequest, TemplateSelectionResponse
 )
 from ..services.service_instances import ppt_service
 from ..services.file_processor import FileProcessor
@@ -24,7 +43,20 @@ from ..core.config import ai_config
 
 def filter_think_tags(content: str) -> str:
     """
-    Filter out think tags from content - supports multiple formats
+    从内容中过滤think标签 - 支持多种格式
+    
+    这是为了清理AI返回内容中可能包含的特殊标签
+    支持的格式:
+    - <think>...</think>
+    - <think>...</think>
+    - ＜think＞...＜/think＞
+    - 【think】...【/think】
+    
+    参数:
+        content: 原始内容
+        
+    返回:
+        过滤后的干净内容
     """
     if not content:
         return content
