@@ -277,7 +277,7 @@ docker logs -f landppt
 
 ```bash
 # AI提供商配置
-DEFAULT_AI_PROVIDER=openai  # openai / deepseek / kimi / minimax / anthropic / google / ollama / 302ai
+DEFAULT_AI_PROVIDER=openai  # openai / deepseek / kimi / minimax / anthropic / google / ollama / 302ai / dashscope
 
 # OpenAI
 OPENAI_API_KEY=your_openai_api_key_here
@@ -301,6 +301,11 @@ MINIMAX_MODEL=MiniMax-M2.1
 302AI_API_KEY=
 302AI_BASE_URL=https://api.302.ai/v1
 302AI_MODEL=gpt-4o
+
+# DashScope（阿里云千问，OpenAI兼容）
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+DASHSCOPE_MODEL=qwen-turbo
 
 # Anthropic
 ANTHROPIC_API_KEY=your_anthropic_api_key_here

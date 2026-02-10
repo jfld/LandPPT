@@ -71,9 +71,15 @@ class OpenAIProvider(AIProvider):
         super().__init__(config)
         try:
             import openai
+            
+            api_key = config.get("api_key")
+            base_url = config.get("base_url")
+            
+            logger.info(f"OpenAIProvider: api_key={api_key[:10] if api_key else None}..., base_url={base_url}")
+            
             self.client = openai.AsyncOpenAI(
-                api_key=config.get("api_key"),
-                base_url=config.get("base_url")
+                api_key=api_key,
+                base_url=base_url
             )
         except ImportError:
             logger.warning("OpenAI library not installed. Install with: pip install openai")
@@ -166,7 +172,7 @@ class OpenAIProvider(AIProvider):
                 temperature=config.get("temperature", 0.7),
                 top_p=config.get("top_p", 1.0)
             )
-            
+            print(f"OpenAI API Response: {response}")
             choice = response.choices[0]
             # Filter out think content from the response
             filtered_content = self._filter_think_content(choice.message.content)
@@ -1052,6 +1058,7 @@ class AIProviderFactory:
         "deepseek": OpenAIProvider,  # OpenAI-compatible
         "kimi": OpenAIProvider,  # OpenAI-compatible
         "minimax": OpenAIProvider,  # OpenAI-compatible
+        "dashscope": OpenAIProvider,  # OpenAI-compatible (DashScope/Ali)
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
         "gemini": GoogleProvider,  # Alias for google
@@ -1070,7 +1077,10 @@ class AIProviderFactory:
             raise ValueError(f"Unknown provider: {provider_name}")
 
         provider_class = cls._providers[provider_name]
-        return provider_class(config)
+        logger.info(f"[Factory] Creating provider: name={provider_name}, class={provider_class.__name__}, config_keys={list(config.keys())}")
+        instance = provider_class(config)
+        logger.info(f"[Factory] Provider created successfully: {provider_name}")
+        return instance
     
     @classmethod
     def get_available_providers(cls) -> List[str]:
@@ -1088,21 +1098,30 @@ class AIProviderManager:
         """Get AI provider instance with caching"""
         if provider_name is None:
             provider_name = ai_config.default_ai_provider
+        
+        logger.info(f"=== get_provider called ===")
+        logger.info(f"  requested provider: {provider_name}")
+        logger.info(f"  default provider from ai_config: {ai_config.default_ai_provider}")
+        logger.info(f"  available providers: {list(AIProviderFactory._providers.keys())}")
+        
         if provider_name not in AIProviderFactory._providers:
             logger.warning(f"Unknown provider '{provider_name}', falling back to 'openai'")
             provider_name = "openai"
 
         # Get current config for the provider
         current_config = ai_config.get_provider_config(provider_name)
+        logger.info(f"  config for '{provider_name}': {current_config}")
 
         # Check if we have a cached provider and if config has changed
         cache_key = provider_name
         if (cache_key in self._provider_cache and
             cache_key in self._config_cache and
             self._config_cache[cache_key] == current_config):
+            logger.info(f"  using cached provider for '{provider_name}'")
             return self._provider_cache[cache_key]
 
         # Create new provider instance
+        logger.info(f"  creating NEW provider for '{provider_name}'")
         provider = AIProviderFactory.create_provider(provider_name, current_config)
 
         # Cache the provider and config

@@ -80,6 +80,11 @@ class ConfigService:
             "302ai_base_url": {"type": "url", "category": "ai_providers", "default": "https://api.302.ai/v1"},
             "302ai_model": {"type": "text", "category": "ai_providers", "default": "gpt-4o"},
             
+            # DashScope (Alibaba Cloud Qwen) Configuration
+            "dashscope_api_key": {"type": "password", "category": "ai_providers"},
+            "dashscope_base_url": {"type": "url", "category": "ai_providers", "default": "https://dashscope.aliyuncs.com/compatible-mode/v1"},
+            "dashscope_model": {"type": "text", "category": "ai_providers", "default": "qwen-turbo"},
+            
             "default_ai_provider": {"type": "select", "category": "ai_providers", "default": "openai"},
             
             # Model Role Overrides

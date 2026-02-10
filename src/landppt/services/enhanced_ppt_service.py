@@ -3761,9 +3761,8 @@ Please fully utilize the above research information to enrich the PPT content, e
     async def _extract_style_genes(self, template_html: str) -> str:
         """使用AI从模板中提取核心设计基因"""
         try:
-            # 使用新的提示词模块
             prompt = prompts_manager.get_style_genes_extraction_prompt(template_html)
-
+            print(f"AI提取设计基因提示词: {prompt}")
             # 调用AI分析
             response = await self._text_completion_for_role("creative",
                 prompt=prompt,
@@ -3772,13 +3771,13 @@ Please fully utilize the above research information to enrich the PPT content, e
             )
 
             ai_genes = response.content.strip()
-
+            print(f"AI提取的原始设计基因: {ai_genes}")
             # 如果AI分析失败，回退到基础提取
             if not ai_genes or len(ai_genes) < 50:
+                print("AI提取的设计基因为空或过短，回退到基础提取")
                 return self._extract_fallback_style_genes(template_html)
 
             return ai_genes
-
         except Exception as e:
             logger.warning(f"AI提取设计基因失败: {e}")
             # 回退到基础提取

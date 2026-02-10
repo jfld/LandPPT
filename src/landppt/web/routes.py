@@ -295,6 +295,7 @@ async def web_ai_config(
         "google",
         "ollama",
         "302ai",
+        "dashscope",
     ]
 
     return templates.TemplateResponse("ai_config.html", {

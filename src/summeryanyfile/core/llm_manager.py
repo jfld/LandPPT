@@ -255,6 +255,9 @@ class LLMManager:
         "ollama": "langchain_ollama",
         "gemini": "langchain_google_genai",
         "google": "langchain_google_genai",  # Alias for gemini
+        "minimax": "langchain_openai",  # OpenAI-compatible
+        "deepseek": "langchain_openai",  # OpenAI-compatible
+        "kimi": "langchain_openai",  # OpenAI-compatible (Moonshot)
     }
     
     SUPPORTED_MODELS = {
@@ -299,6 +302,22 @@ class LLMManager:
             "gemini-1.5-flash",
             "gemini-1.0-pro",
             "gemini-pro-vision",
+        ],
+        "minimax": [
+            "MiniMax-M2.1",
+            "MiniMax-M2",
+            "MiniMax-M1",
+        ],
+        "deepseek": [
+            "deepseek-chat",
+            "deepseek-reasoner",
+        ],
+        "kimi": [
+            "kimi-k2.5",
+            "kimi-k1.5",
+            "moonshot-v1-8k",
+            "moonshot-v1-32k",
+            "moonshot-v1-128k",
         ],
     }
     
@@ -368,6 +387,27 @@ class LLMManager:
             return self._create_gemini_llm(model, temperature, max_tokens, **kwargs)
         elif provider == "gemini":
             return self._create_gemini_llm(model, temperature, max_tokens, **kwargs)
+        elif provider == "minimax":
+            return self._create_openai_compatible_llm(
+                model, temperature, max_tokens,
+                api_key=kwargs.get("api_key") or os.getenv("MINIMAX_API_KEY"),
+                base_url=kwargs.get("base_url") or os.getenv("MINIMAX_BASE_URL") or "https://api.minimaxi.com/v1",
+                **kwargs
+            )
+        elif provider == "deepseek":
+            return self._create_openai_compatible_llm(
+                model, temperature, max_tokens,
+                api_key=kwargs.get("api_key") or os.getenv("DEEPSEEK_API_KEY"),
+                base_url=kwargs.get("base_url") or os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
+                **kwargs
+            )
+        elif provider == "kimi":
+            return self._create_openai_compatible_llm(
+                model, temperature, max_tokens,
+                api_key=kwargs.get("api_key") or os.getenv("KIMI_API_KEY"),
+                base_url=kwargs.get("base_url") or os.getenv("KIMI_BASE_URL") or "https://api.moonshot.cn/v1",
+                **kwargs
+            )
         else:
             raise ValueError(f"不支持的提供商: {provider}")
     
@@ -407,6 +447,36 @@ class LLMManager:
         # 添加其他参数（排除已处理的）
         excluded_keys = {"api_key", "base_url"}
         openai_kwargs.update({k: v for k, v in kwargs.items() if k not in excluded_keys})
+
+        return ChatOpenAI(**openai_kwargs)
+
+    def _create_openai_compatible_llm(
+        self,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        api_key: str,
+        base_url: str,
+        **kwargs
+    ) -> BaseChatModel:
+        """创建OpenAI兼容的LLM（如MiniMax、DeepSeek、Kimi等）"""
+        try:
+            from langchain_openai import ChatOpenAI
+        except ImportError:
+            raise ImportError("请安装 langchain-openai: pip install langchain-openai")
+
+        if not api_key:
+            raise ValueError("未找到API密钥。请配置对应的API_KEY环境变量")
+
+        # 构建参数
+        openai_kwargs = {
+            "model": model,
+            "temperature": temperature,
+            "api_key": api_key,
+            "base_url": base_url,
+        }
+
+        logger.info(f"使用OpenAI兼容端点: {base_url}, 模型: {model}")
 
         return ChatOpenAI(**openai_kwargs)
 

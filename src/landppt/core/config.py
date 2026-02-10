@@ -71,6 +71,11 @@ class AIConfig(BaseSettings):
     ai_302ai_base_url: str = Field(default="https://api.302.ai/v1", env="302AI_BASE_URL", alias="302ai_base_url")
     ai_302ai_model: str = Field(default="gpt-4o", env="302AI_MODEL", alias="302ai_model")
     
+    # DashScope (Alibaba Cloud) Configuration
+    dashscope_api_key: Optional[str] = Field(default=None, env="DASHSCOPE_API_KEY")
+    dashscope_base_url: str = Field(default="https://dashscope.aliyuncs.com/compatible-mode/v1", env="DASHSCOPE_BASE_URL")
+    dashscope_model: str = Field(default="qwen-turbo", env="DASHSCOPE_MODEL")
+    
     # Hugging Face Configuration
     huggingface_api_token: Optional[str] = Field(default=None, env="HUGGINGFACE_API_TOKEN")
 
@@ -205,6 +210,8 @@ class AIConfig(BaseSettings):
             return self._normalize_optional_str(self.google_model)
         if provider_key == "302ai":
             return self._normalize_optional_str(self.ai_302ai_model)
+        if provider_key == "dashscope":
+            return self._normalize_optional_str(self.dashscope_model)
         if provider_key == "ollama":
             return self._normalize_optional_str(self.ollama_model)
         return self._normalize_optional_str(self.openai_model)
@@ -322,6 +329,14 @@ class AIConfig(BaseSettings):
                 "max_tokens": self.max_tokens,
                 "temperature": self.temperature,
                 "top_p": self.top_p,
+            },
+            "dashscope": {
+                "api_key": self.dashscope_api_key,
+                "base_url": self.dashscope_base_url,
+                "model": self.dashscope_model,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "top_p": self.top_p,
             }
         }
 
@@ -348,6 +363,8 @@ class AIConfig(BaseSettings):
             return self.enable_local_models
         elif provider == "302ai":
             return bool(config.get("api_key"))
+        elif provider == "dashscope":
+            return bool(config.get("api_key"))
 
         return False
     
@@ -358,7 +375,7 @@ class AIConfig(BaseSettings):
 
         # Add built-in providers. Note: "gemini" is an alias for "google" (same config),
         # so we only expose a single canonical provider name here to avoid duplicates in UIs.
-        for provider in ["openai", "deepseek", "kimi", "minimax", "anthropic", "google", "gemini", "ollama", "302ai"]:
+        for provider in ["openai", "deepseek", "kimi", "minimax", "anthropic", "google", "gemini", "ollama", "302ai", "dashscope"]:
             if not self.is_provider_available(provider):
                 continue
 
@@ -413,6 +430,9 @@ def reload_ai_config():
     ai_config.ai_302ai_api_key = os.environ.get('302AI_API_KEY', ai_config.ai_302ai_api_key)
     ai_config.ai_302ai_base_url = os.environ.get('302AI_BASE_URL', ai_config.ai_302ai_base_url)
     ai_config.ai_302ai_model = os.environ.get('302AI_MODEL', ai_config.ai_302ai_model)
+    ai_config.dashscope_api_key = os.environ.get('DASHSCOPE_API_KEY', ai_config.dashscope_api_key)
+    ai_config.dashscope_base_url = os.environ.get('DASHSCOPE_BASE_URL', ai_config.dashscope_base_url)
+    ai_config.dashscope_model = os.environ.get('DASHSCOPE_MODEL', ai_config.dashscope_model)
     ai_config.default_ai_provider = os.environ.get('DEFAULT_AI_PROVIDER', ai_config.default_ai_provider)
     model_provider_env = os.environ.get('DEFAULT_MODEL_PROVIDER')
     ai_config.default_model_provider = (ai_config._normalize_optional_str(model_provider_env)

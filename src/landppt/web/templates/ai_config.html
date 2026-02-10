@@ -77,7 +77,7 @@
         <div style="margin-top: 30px;">
             <h3 class="section-heading" style="text-align: center;">AI 提供者详情配置</h3>
 
-            {% set provider_list = supported_providers if supported_providers is defined else ["openai", "deepseek", "kimi", "minimax", "anthropic", "google", "ollama", "302ai"] %}
+            {% set provider_list = supported_providers if supported_providers is defined else ["openai", "deepseek", "kimi", "minimax", "anthropic", "google", "ollama", "302ai", "dashscope"] %}
             <div class="provider-accordion-list">
                 {% for provider in provider_list %}
                 <details class="provider-accordion provider-config-card" data-provider="{{ provider }}" {% if provider == "openai" %}open{% endif %}>
@@ -101,6 +101,8 @@
                                 Ollama (本地)
                                 {% elif provider == "302ai" %}
                                 302.AI
+                                {% elif provider == "dashscope" %}
+                                阿里云千问 (DashScope)
                                 {% endif %}
                             </span>
 
@@ -133,7 +135,7 @@
 
                     <div class="provider-accordion__body">
                         <div class="provider-accordion__fields">
-                            {% if provider in ["openai", "deepseek", "kimi", "minimax", "302ai"] %}
+                            {% if provider in ["openai", "deepseek", "kimi", "minimax", "302ai", "dashscope"] %}
                             {% set provider_api_key = current_config.get(provider ~ '_api_key', '') %}
                             {% set provider_base_url = current_config.get(provider ~ '_base_url', '') %}
                             {% set provider_model = current_config.get(provider ~ '_model', '') %}
@@ -159,7 +161,7 @@
                                 {% endif %}
                                 <input type="text" name="{{ provider }}_base_url"
                                     value="{{ provider_base_url }}"
-                                    placeholder="{% if provider == 'openai' %}https://api.openai.com/v1{% elif provider == 'deepseek' %}https://api.deepseek.com/v1{% elif provider == 'kimi' %}https://api.moonshot.cn/v1{% elif provider == 'minimax' %}https://api.minimaxi.com/v1{% else %}https://api.openai.com/v1{% endif %}">
+                                    placeholder="{% if provider == 'openai' %}https://api.openai.com/v1{% elif provider == 'deepseek' %}https://api.deepseek.com/v1{% elif provider == 'kimi' %}https://api.moonshot.cn/v1{% elif provider == 'minimax' %}https://api.minimaxi.com/v1{% elif provider == 'dashscope' %}https://dashscope.aliyuncs.com/compatible-mode/v1{% else %}https://api.openai.com/v1{% endif %}">
                                 {% endif %}
                             </div>
 
@@ -183,9 +185,14 @@
                                     {% endif %}
                                     <input type="text" name="{{ provider }}_model" id="{{ provider }}_model_input" class="model-input"
                                         value="{{ provider_model }}"
-                                        placeholder="{% if provider == 'openai' %}gpt-4o{% elif provider == 'deepseek' %}deepseek-chat{% elif provider == 'kimi' %}kimi-k2.5{% elif provider == 'minimax' %}MiniMax-M2.1{% elif provider == '302ai' %}gpt-4o{% else %}model{% endif %}">
+                                        placeholder="{% if provider == 'openai' %}gpt-4o{% elif provider == 'deepseek' %}deepseek-chat{% elif provider == 'kimi' %}kimi-k2.5{% elif provider == 'minimax' %}MiniMax-M2.1{% elif provider == '302ai' %}gpt-4o{% elif provider == 'dashscope' %}qwen-turbo{% else %}model{% endif %}">
                                     {% if provider == "302ai" %}
                                     <button type="button" onclick="fetch302AIModels()" id="{{ provider }}_model_fetch_btn"
+                                        class="model-fetch-btn" title="获取可用模型列表">
+                                        ▾
+                                    </button>
+                                    {% elif provider == "dashscope" %}
+                                    <button type="button" onclick="fetchAndShowModels('dashscope')" id="dashscope_model_fetch_btn"
                                         class="model-fetch-btn" title="获取可用模型列表">
                                         ▾
                                     </button>
@@ -313,6 +320,7 @@
                                         {% elif provider == "google" %}Google Gemini
                                         {% elif provider == "ollama" %}Ollama (本地)
                                         {% elif provider == "302ai" %}302.AI
+                                        {% elif provider == "dashscope" %}阿里云千问
                                         {% else %}{{ provider }}
                                         {% endif %}
                                     </option>
@@ -3009,7 +3017,7 @@
     // 初始化搜索选择框
     function initSearchableSelects() {
         // 初始化OpenAI兼容提供者的模型搜索选择框
-        ['openai', 'deepseek', 'kimi', 'minimax'].forEach(provider => {
+        ['openai', 'deepseek', 'kimi', 'minimax', 'dashscope'].forEach(provider => {
             const containerId = `${provider}_model_container`;
             if (document.getElementById(containerId)) {
                 openaiCompatibleModelSelects[provider] = new SearchableSelect(containerId);
@@ -3142,6 +3150,7 @@
                 case 'deepseek':
                 case 'kimi':
                 case 'minimax':
+                case 'dashscope':
                     testResult = await testOpenAICompatibleProvider(providerName, config);
                     break;
                 case 'anthropic':
@@ -3174,13 +3183,15 @@
                 openai: 'https://api.openai.com/v1',
                 deepseek: 'https://api.deepseek.com/v1',
                 kimi: 'https://api.moonshot.cn/v1',
-                minimax: 'https://api.minimaxi.com/v1'
+                minimax: 'https://api.minimaxi.com/v1',
+                dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
             };
             const defaultModels = {
                 openai: 'gpt-4o',
                 deepseek: 'deepseek-chat',
                 kimi: 'kimi-k2.5',
-                minimax: 'MiniMax-M2.1'
+                minimax: 'MiniMax-M2.1',
+                dashscope: 'qwen-turbo'
             };
 
             // 获取配置 - 使用前端页面填写的信息
@@ -3848,7 +3859,7 @@
         const selectedProvider = selectElement.value.toLowerCase();
 
         // 只有选择 OpenAI 兼容提供者 或 302ai 时显示按钮
-        if (['openai', 'deepseek', 'kimi', 'minimax', '302ai'].includes(selectedProvider)) {
+        if (['openai', 'deepseek', 'kimi', 'minimax', '302ai', 'dashscope'].includes(selectedProvider)) {
             fetchBtn.style.display = 'flex';
         } else {
             fetchBtn.style.display = 'none';
@@ -3884,12 +3895,13 @@
 
             let models = null;
 
-            if (['openai', 'deepseek', 'kimi', 'minimax'].includes(provider)) {
+            if (['openai', 'deepseek', 'kimi', 'minimax', 'dashscope'].includes(provider)) {
                 const defaultBaseUrls = {
                     openai: 'https://api.openai.com/v1',
                     deepseek: 'https://api.deepseek.com/v1',
                     kimi: 'https://api.moonshot.cn/v1',
-                    minimax: 'https://api.minimaxi.com/v1'
+                    minimax: 'https://api.minimaxi.com/v1',
+                    dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
                 };
 
                 const apiKeyInput = providerCard.querySelector(`input[name="${provider}_api_key"]`);
@@ -4873,7 +4885,8 @@
             openai: 'https://api.openai.com/v1',
             deepseek: 'https://api.deepseek.com/v1',
             kimi: 'https://api.moonshot.cn/v1',
-            minimax: 'https://api.minimaxi.com/v1'
+            minimax: 'https://api.minimaxi.com/v1',
+            dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
         };
 
         try {

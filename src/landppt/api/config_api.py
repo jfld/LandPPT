@@ -69,6 +69,57 @@ async def get_config_by_category(
         raise HTTPException(status_code=500, detail=f"Failed to get configuration for category {category}")
 
 
+# Alias for ai_providers category
+@router.get("/api/config/ai_providers")
+async def get_ai_providers_config(
+    config_service: ConfigService = Depends(get_config_service),
+    user: User = Depends(get_current_admin_user)
+):
+    """Get AI providers configuration"""
+    try:
+        config = config_service.get_config_by_category("ai_providers")
+        return {
+            "success": True,
+            "config": config
+        }
+    except Exception as e:
+        logger.error(f"Failed to get AI providers configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get AI providers configuration")
+
+
+@router.post("/api/config/ai_providers")
+async def update_ai_providers_config(
+    request: ConfigUpdateRequest,
+    config_service: ConfigService = Depends(get_config_service),
+    user: User = Depends(get_current_admin_user)
+):
+    """Update AI providers configuration"""
+    try:
+        # Validate configuration
+        errors = config_service.validate_config(request.config)
+        if errors:
+            return {
+                "success": False,
+                "errors": errors
+            }
+        
+        # Update configuration
+        success = config_service.update_config(request.config)
+        
+        if success:
+            reload_ai_config()
+            return {
+                "success": True,
+                "message": "AI providers configuration updated successfully"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update AI providers configuration")
+            
+    except Exception as e:
+        logger.error(f"Failed to update AI providers configuration: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update AI providers configuration")
+
+
 @router.post("/api/config/all")
 async def update_all_config(
     request: ConfigUpdateRequest,
